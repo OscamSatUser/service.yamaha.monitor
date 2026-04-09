@@ -25,7 +25,7 @@ msgid "Show Yamaha Info Screen"
 msgstr ""
 
 msgctxt "#32003"
-msgid "Wait ## seconds for video before screen"
+msgid "Pause ## seconds for video before start"
 msgstr ""
 
 msgctxt "#32004"

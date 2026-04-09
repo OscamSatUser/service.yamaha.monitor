@@ -1,6 +1,7 @@
 import xbmc
 import urllib.request
 import xbmcaddon
+import xbmcgui
 
 # --- Configuration ---
 ADDON = xbmcaddon.Addon()
@@ -9,6 +10,8 @@ CMD_STRAIGHT = "7E81E01F"
 CMD_7CH_STEREO = "7E81FF00"
 CMD_INFO = "7F01609F"
 CMD_EXIT = "7A85AA55"
+last_file = "none"
+last_channel = 0
 
 def send_yamaha_command(code,ip):
     url = f"http://{ip}/YamahaExtendedControl/v1/system/sendIrCode?code={code}"
@@ -21,15 +24,42 @@ def send_yamaha_command(code,ip):
 class YamahaService(xbmc.Player):
     def __init__(self):
         super().__init__()
+        self.monitor = xbmc.Monitor()
+
+    def pausewhilestopped(self, seconds):
+        for _ in range(seconds * 10): # 100ms increments
+            if self.monitor.abortRequested():
+                return False
+            if self.isPlaying(): # If a new video started during the wait
+                return False
+            xbmc.sleep(100)
+        return True
+
+    def pausewhileplay(self, seconds):
+        for _ in range(seconds * 10): # 100ms increments
+            if self.monitor.abortRequested():
+                return False
+            if not self.isPlaying(): # If a new video started during the wait
+                return False
+            xbmc.sleep(100)
+        return True
+
 
     def _cleanup_receiver(self, event_type):
-        YIP = ADDON.getSetting('yamaha_ip')
-        xbmc.log(f"YAMAHA-SERVICE: {event_type} - Default back to STRAIGHT...", xbmc.LOGINFO)
-        
-        try:
-            send_yamaha_command(CMD_STRAIGHT,YIP)
-        except Exception as e:
-            xbmc.log(f"YAMAHA-CLEANUP-ERROR: {e}", xbmc.LOGERROR)
+        global last_file
+        global last_channel
+
+        self.pausewhilestopped(10)
+        if not self.isPlaying():
+            last_channel = 0
+            last_file = "none"
+            YIP = ADDON.getSetting('yamaha_ip')
+            xbmc.log(f"YAMAHA-SERVICE: {event_type} - Default back to STRAIGHT...", xbmc.LOGINFO)
+            
+            try:
+                send_yamaha_command(CMD_STRAIGHT,YIP)
+            except Exception as e:
+                xbmc.log(f"YAMAHA-CLEANUP-ERROR: {e}", xbmc.LOGERROR)
     
     def onPlayBackStopped(self):
         self._cleanup_receiver("STOPPED")
@@ -38,17 +68,21 @@ class YamahaService(xbmc.Player):
         self._cleanup_receiver("ENDED")
             
     def onAVStarted(self):
+        global last_file
+        global last_channel
+        
+        paused = False
         YIP = ADDON.getSetting('yamaha_ip')
         SHOW_ONSCREEN = ADDON.getSettingBool('show_onscreen')
-        PAUSE = int(ADDON.getSetting('screen_delay') or 0) * 1000
-        ONSCREEN = int(ADDON.getSetting('screen_seconds') or 0) * 1000
+        PAUSE = int(ADDON.getSetting('screen_delay') or 0)
+        ONSCREEN = int(ADDON.getSetting('screen_seconds') or 0)
 
         xbmc.log(f"YAMAHA-SERVICE: {YIP} : ShowScreen: {SHOW_ONSCREEN} Wait: {PAUSE} Show: {ONSCREEN}", xbmc.LOGINFO)
         xbmc.log("YAMAHA-SERVICE: Playback started, waiting for metadata...", xbmc.LOGINFO)
         
         channels = ""
         retries = 0
-        max_retries = 15 # Wait up to 15 seconds for spin-up
+        max_retries = 60 # Wait up to 15 seconds for spin-up
         
         while not channels and retries < max_retries:
             # Check for abort so we don't hang if the user stops the movie while spinning up
@@ -62,32 +96,42 @@ class YamahaService(xbmc.Player):
                 
             if not channels:
                 retries += 1
-                xbmc.sleep(1000) # Wait 1 second before checking again
+                xbmc.sleep(250) # Wait 1 second before checking again
         
+        #xbmc.log(f"YAMAHA-SERVICE: Got Metadata!", xbmc.LOGINFO)
         if channels:
-            #xbmc.log(f"YAMAHA-SERVICE: Metadata found after {retries}s. Channels: {channels}", xbmc.LOGINFO)
-            try:
+            if int(channels) != last_channel :
+                last_channel = int(channels)
+                xbmc.log(f"YAMAHA-SERVICE: Metadata found after {retries}s. Channels: {channels}", xbmc.LOGINFO)
                 if int(channels) <= 2:
                     xbmc.log("YAMAHA-DEBUG: Mode: 7ch Stereo", xbmc.LOGINFO)
                     send_yamaha_command(CMD_7CH_STEREO,YIP)
                 else:
                     xbmc.log("YAMAHA-DEBUG: Mode: Straight", xbmc.LOGINFO)
                     send_yamaha_command(CMD_STRAIGHT,YIP)
+        
+            curr_file = xbmc.getInfoLabel('Player.Filename')
+            #xbmc.log(f"YAMAHA-DEBUG: {curr_file}", xbmc.LOGINFO)            
+            if SHOW_ONSCREEN and self.isPlayingVideo() and curr_file != last_file :
+                xbmc.log(f"YAMAHA-DEBUG: Showing Yamaha Screen in {PAUSE} seconds", xbmc.LOGINFO)
+                if self.isPlayingVideo():
+                    self.pause()
+                    secs = self.getTime()
+                    if secs < 60 : self.seekTime(0.0)
+                    paused = True
+                    xbmcgui.Dialog().notification('Waiting pause time', 'or Press Play', xbmcgui.NOTIFICATION_INFO, PAUSE*1000)
+                    self.pausewhileplay(PAUSE)
                 
-                #Give time for the screen resolution to update and display before showing onscreen.
-                if SHOW_ONSCREEN:
-                    xbmc.log(f"YAMAHA-DEBUG: Showing Yamaha Screen in {PAUSE} milliseconds", xbmc.LOGINFO)
-                    if self.isPlayingVideo():
-                        xbmc.sleep(PAUSE)
-                    
-                    if self.isPlaying():
-                        send_yamaha_command(CMD_INFO,YIP)
-                        xbmc.sleep(ONSCREEN)
-                        send_yamaha_command(CMD_EXIT,YIP)
-                else:
-                    xbmc.log("YAMAHA-DEBUG: Skipping Yamaha Screen", xbmc.LOGINFO)
-            except:
-                pass
+                if self.isPlaying():
+                    if paused and xbmc.getCondVisibility("Player.Paused"): self.pause()
+                    send_yamaha_command(CMD_INFO,YIP)
+                    self.pausewhileplay(ONSCREEN)
+                    send_yamaha_command(CMD_EXIT,YIP)
+            else:
+                xbmc.log("YAMAHA-DEBUG: Skipping Yamaha Screen", xbmc.LOGINFO)
+            last_file = curr_file
+#            except:
+#                pass
         else:
             xbmc.log("YAMAHA-SERVICE: Timeout waiting for drive spin-up.", xbmc.LOGERROR)
 
