@@ -9,24 +9,17 @@
             <heading>32001</heading>
           </control>
         </setting>
-        <setting id="show_onscreen" type="boolean" label="32002" help="">
+        <setting id="got_multicast" type="boolean" label="32005" help="">
 	        <level>0</level>
 	        <default>true</default>
 	        <control type="toggle"/>
         </setting>
-        <setting id="screen_delay" type="integer" label="32003" help="">
-        	<level>0</level>
-        	<default>10</default>
-        	<constraints>
-        		<minimum>1</minimum>
-        		<step>1</step>
-        		<maximum>30</maximum>
-        	</constraints>
-        	<control type="slider" format="integer">
-        		<popup>false</popup>
-        	</control>
+        <setting id="show_onscreen" type="boolean" label="32002" help="">
+	        <level>0</level>
+	        <default>true</default>
+	        <control type="toggle"/>
         	<dependencies>
-	            <dependency type="enable" setting="show_onscreen">true</dependency>
+	            <dependency type="enable" setting="got_multicast">true</dependency>
             </dependencies>
         </setting>
         <setting id="screen_seconds" type="integer" label="32004" help="">
@@ -41,9 +34,21 @@
         		<popup>false</popup>
         	</control>
         	<dependencies>
-	            <dependency type="enable" setting="show_onscreen">true</dependency>
+	            <dependency type="enable" setting="got_multicast">true</dependency>
             </dependencies>
          </setting>
+        <setting id="video_pause" type="integer" label="32003" help="">
+        	<level>0</level>
+        	<default>10</default>
+        	<constraints>
+        		<minimum>0</minimum>
+        		<step>1</step>
+        		<maximum>30</maximum>
+        	</constraints>
+        	<control type="slider" format="integer">
+        		<popup>false</popup>
+        	</control>
+        </setting>
       </group>
     </category>
   </section>

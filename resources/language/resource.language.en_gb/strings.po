@@ -21,13 +21,25 @@ msgid "Yamaha IP"
 msgstr ""
 
 msgctxt "#32002"
-msgid "Show Yamaha Info Screen"
+msgid "Show Yamaha AV Info Screen"
 msgstr ""
 
 msgctxt "#32003"
-msgid "Pause ## seconds for video before start"
+msgid "Pause video seconds to allow screen to refresh"
 msgstr ""
 
 msgctxt "#32004"
-msgid "Show yamaha screen for ## seconds"
+msgid "Show yamaha AV info for ## seconds"
+msgstr ""
+
+msgctxt "#32005"
+msgid "Yamaha supports Multicast"
+msgstr ""
+
+msgctxt "#32006"
+msgid "Waiting pause time"
+msgstr ""
+
+msgctxt "#32007"
+msgid "or Press Play"
 msgstr ""
