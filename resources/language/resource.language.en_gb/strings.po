@@ -43,3 +43,23 @@ msgstr ""
 msgctxt "#32007"
 msgid "or Press Play"
 msgstr ""
+
+msgctxt "#32008"
+msgid "After playback set mode to"
+msgstr ""
+
+msgctxt "#32009"
+msgid "None"
+msgstr ""
+
+msgctxt "#32010"
+msgid "7 Channel Stereo"
+msgstr ""
+
+msgctxt "#32011"
+msgid "Surround Decoder"
+msgstr ""
+
+msgctxt "#32012"
+msgid "Straight Mode"
+msgstr ""
